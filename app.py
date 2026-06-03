@@ -151,12 +151,22 @@ app_ui = ui.page_sidebar(
 
     ui.h1("About This Display"),
     ui.p("This will describe what this page shows... more to go",ui.br(),ui.br()),
+
     ui.p("This display shows a a series of climate simulations from the CMIP6 Climate Model Ensembles ",
          "and are a collection of the best simulations from each center's model participating in CMIP6.",ui.br(),ui.br()),
-    ui.p("The output from these models were 'downscaled' from the global to regional scale using the Localized Constructed Analog Method (LOCA) by ",
+
+    ui.p("The output from these models were 'downscaled' from the global to regional scale using the ",
+         "Localized Constructed Analog Method (LOCA) by ",
            ui.tags.a("Pierce et al. (2014)." ,href='https://journals.ametsoc.org/view/journals/hydr/15/6/jhm-d-14-0082_1.xml'),ui.br(),ui.br()),
+
     ui.p("The results for the downscaling have been averaged over State Climate Divisions chosen by the user.",ui.br(),ui.br()),
-    ui.p("The user may select a variable from the pulldown menus, and also select a future 30-year period by which to view the monthly trends and compare them to a fixed historical period (1981-2010).",ui.br(),ui.br()),
+
+    ui.p("The user may select a variable from the pulldown menus, and also select a future ",
+         "30-year period by which to view the monthly trends and compare them to a fixed historical period (1981-2010).",ui.br(),ui.br()),
+
+
+    ui.p("For both the annual and monthly plots, the solid lines represent the ensemble means, while the shading ",
+         "represents the middle 50% range of the collected ensembles.",ui.br(),ui.br()),
 
 
     title="CMIP6-LOCA2 Ensemble Plotting",
