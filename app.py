@@ -218,7 +218,7 @@ def server(input, output, session):
             print("  use_url :", use_url)
             print(" filename :", filename)
             print("===============")
-            result = pyreadr.read_r(filename)
+            result = pyreadr.read_r(path = filename)
 
 
         df_loca2_monthy = result['loca2_monthly']
@@ -256,12 +256,23 @@ def server(input, output, session):
         climdiv_key = selected_climdiv.split()[0]
         print(" -->", climdiv_key)
         if (use_url):
-            url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
+            url      = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
+            print("===============")
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print("      url :", url)
+            print("===============")
             response = urllib.request.urlopen(url)
-            result = pyreadr.read_r(io.BytesIO(response.read()))
+            result   = pyreadr.read_r(io.BytesIO(response.read()))
         else:
             filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"
-            result = pyreadr.read_r(filename)
+            print("===============")
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print(" filename :", filename)
+            print("===============")
+            result   = pyreadr.read_r(path = filename)
+
         df_loca2_annual = result['loca2_annual']
         df_loca2_annual = df_loca2_annual[df_loca2_annual["Percentile"]=="MEAN"]
         df_loca2_annual['Scenario'] = pd.Categorical(df_loca2_annual['Scenario'], 
