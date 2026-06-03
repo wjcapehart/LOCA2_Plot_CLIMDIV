@@ -90,8 +90,16 @@ future_years = {"2036-2065": [2036, 2065],
 # 
 ##########################################################
 
+##########################################################
+#
+# Customized Plotting and Text Parameters
+#
 
+custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+sns.set_theme(style="ticks", rc=custom_params)
 
+# 
+##########################################################
 
 
 ##########################################################
@@ -105,16 +113,16 @@ app_ui = ui.page_sidebar(
 
 
         ui.input_select(id       = "state_selection", 
-                        label    = "Select State", 
+                        label    = "US State", 
                         choices  = list(climdiv_by_state.keys()), 
                         selected = "39 South Dakota"),
 
         ui.input_select(id       = "climdiv_selection", 
-                        label    = "Select Climate Division", 
+                        label    = "State Climate Division", 
                         choices  = []), # selected = "3904 Black Hills"),
 
         ui.input_select(id       = "loca_var", 
-                        label    = "Select Variable", 
+                        label    = "LOCA2 Plotting Variable", 
                         choices  = ["tasmin", "tasavg", "tasmax", "pr"],
                         selected = "tasavg"),
 
@@ -122,14 +130,14 @@ app_ui = ui.page_sidebar(
                         label    = "Select Future Period", 
                         choices  = list(future_years.keys()), 
                         selected = "2036-2065"),
-        ui.output_plot(id = "state_zone_map"),
+        ui.output_plot(id        = "state_zone_map"),
 
     ),
 
     ui.output_plot("annual_plot"),
     ui.output_plot("monthly_plot"),
 
-    title="LOCA2 Plotting Test",
+    title="CMIP6-LOCA2 Ensemble Plotting",
 )
 # 
 ##########################################################
@@ -312,7 +320,7 @@ def server(input, output, session):
         
         selected_state = input.state_selection()
         state_key = str(selected_state.split()[0]).zfill(2)
-        state_img_file = "./state_climate_division_images/state_"+state_key+".gif"
+        state_img_file = "./state_climate_division_images/state_"+state_key+".png"
         print("--> state_key:", state_img_file)
 
         img: ImgData = {"src": state_img_file, "width": "100%"}
