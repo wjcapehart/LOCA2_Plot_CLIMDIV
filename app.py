@@ -1,5 +1,4 @@
 
-# Import data from shared.py
 
 
 ##########################################################
@@ -15,6 +14,7 @@ import io
 import urllib.request
 import calendar
 
+from   shiny.types   import ImgData
 from   shiny         import reactive, App, render, ui  
 
 #
@@ -122,6 +122,7 @@ app_ui = ui.page_sidebar(
                         label    = "Select Future Period", 
                         choices  = list(future_years.keys()), 
                         selected = "2036-2065"),
+        ui.output_plot(id = "state_zone_map"),
 
     ),
 
@@ -301,10 +302,37 @@ def server(input, output, session):
         #
         ###################################
 
+    
+    @render.image
+    def state_zone_map():
+        ###################################
+        #
+        # Pull Correct State Image
+        #
+        
+        selected_state = input.state_selection()
+        state_key = str(selected_state.split()[0]).zfill(2)
+        state_img_file = "./state_climate_division_images/state_"+state_key+".gif"
+        print("--> state_key:", state_img_file)
+
+        img: ImgData = {"src": state_img_file, "width": "100%"}
+        return img
+
+
+        #
+        ###################################
+
 # 
 ##########################################################     
 
 
 
+##########################################################
+#
+# Execute Webapp
+#
 
 app = App(app_ui, server)
+
+# 
+##########################################################     
