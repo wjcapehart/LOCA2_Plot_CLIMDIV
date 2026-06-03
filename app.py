@@ -22,6 +22,13 @@ from   shiny         import reactive, App, render, ui
 
 
 
+import socket
+hostname = socket.gethostname()
+print(socket.gethostname())
+if (hostname == "kyrill"):
+    use_url = False
+else:
+    use_url = True
 
 
 
@@ -186,9 +193,16 @@ def server(input, output, session):
         selected_climdiv = input.climdiv_selection()
         climdiv_key = selected_climdiv.split()[0]
         print(" -->", climdiv_key)
-        url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"#?raw=true"
-        response = urllib.request.urlopen(url)
-        result = pyreadr.read_r(io.BytesIO(response.read()))
+
+
+        if (use_url):
+            url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"#?raw=true"
+            response = urllib.request.urlopen(url)
+            result = pyreadr.read_r(io.BytesIO(response.read()))
+        else:
+            filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"
+            result = pyreadr(filename)
+
         df_loca2_monthy = result['loca2_monthly']
         df_loca2_monthy = df_loca2_monthy[df_loca2_monthy["Percentile"]=="MEAN"]
         df_loca2_monthy["tasavg"] = (df_loca2_monthy["tasmax"] + df_loca2_monthy["tasmin"]) /2
@@ -223,9 +237,13 @@ def server(input, output, session):
         selected_climdiv = input.climdiv_selection()
         climdiv_key = selected_climdiv.split()[0]
         print(" -->", climdiv_key)
-        url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
-        response = urllib.request.urlopen(url)
-        result = pyreadr.read_r(io.BytesIO(response.read()))
+        if (use_url):
+            url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
+            response = urllib.request.urlopen(url)
+            result = pyreadr.read_r(io.BytesIO(response.read()))
+        else:
+            filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"
+            result = pyreadr(filename)
         df_loca2_annual = result['loca2_annual']
         df_loca2_annual = df_loca2_annual[df_loca2_annual["Percentile"]=="MEAN"]
         df_loca2_annual['Scenario'] = pd.Categorical(df_loca2_annual['Scenario'], 
