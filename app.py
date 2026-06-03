@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 import io
 import urllib.request
 import calendar
+import socket
+
 
 from   shiny.types   import ImgData
 from   shiny         import reactive, App, render, ui  
@@ -22,13 +24,16 @@ from   shiny         import reactive, App, render, ui
 
 
 
-import socket
 hostname = socket.gethostname()
-print(socket.gethostname())
 if (hostname == "kyrill"):
     use_url = False
 else:
     use_url = True
+print("===============")
+print(" hostname :", hostname)
+print("  use_url :", use_url)
+print("===============")
+
 
 
 
@@ -197,11 +202,24 @@ def server(input, output, session):
 
         if (use_url):
             url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"#?raw=true"
+
+            print("===============") 
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print("      url :", url)
+            print("===============")
+ 
             response = urllib.request.urlopen(url)
             result = pyreadr.read_r(io.BytesIO(response.read()))
         else:
             filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"
+            print("===============")
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print(" filename :", filename)
+            print("===============")
             result = pyreadr(filename)
+
 
         df_loca2_monthy = result['loca2_monthly']
         df_loca2_monthy = df_loca2_monthy[df_loca2_monthy["Percentile"]=="MEAN"]
