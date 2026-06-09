@@ -10,10 +10,12 @@ import seaborn           as sns
 import pyreadr           as pyreadr
 import pandas            as pd 
 import matplotlib.pyplot as plt
+import numpy as np
 import io
 import urllib.request
 import calendar
 import socket
+
 
 
 from   shiny.types   import ImgData
@@ -138,6 +140,8 @@ app_ui = ui.page_sidebar(
                         choices  = ["tasmin", "tasavg", "tasmax", "pr"],
                         selected = "tasavg"),
 
+        ui.input_switch("use_metric", "Metric Units", True),
+
         ui.input_select(id       = "period_selection", 
                         label    = "Select Future Period", 
                         choices  = list(future_years.keys()), 
@@ -147,10 +151,18 @@ app_ui = ui.page_sidebar(
     ),
 
     ui.output_plot("annual_plot"),
+
+
     ui.output_plot("monthly_plot"),
 
+    ui.p("Download as a comma-delimited file (CSV), Metric units only"),
+
+    ui.download_button(id = "annual_download_btn", 
+                       label = "Download Annual Data (CSV)"),
+    ui.download_button(id = "monthly_download_btn", 
+                      label = "Download Monthly Data (CSV)"),
+    ui.p(ui.br()),
     ui.h1("About This Display"),
-    ui.p("This will describe what this page shows... more to go",ui.br(),ui.br()),
 
     ui.p("This display shows a a series of climate simulations from the CMIP6 Climate Model Ensembles ",
          "and are a collection of the best simulations from each center's model participating in CMIP6.",ui.br(),ui.br()),
@@ -208,7 +220,6 @@ def server(input, output, session):
 
         selected_climdiv = input.climdiv_selection()
         climdiv_key = selected_climdiv.split()[0]
-        print(" -->", climdiv_key)
 
 
         if (use_url):
@@ -247,10 +258,38 @@ def server(input, output, session):
         df_loca2_monthy = df_loca2_monthy[((df_loca2_monthy["Year"] >= historical_period[0]) & (df_loca2_monthy["Year"] <= historical_period[1])) |
                                           ((df_loca2_monthy["Year"] >= future_years[input.period_selection()][0]) & (df_loca2_monthy["Year"] <= future_years[input.period_selection()][1])) ]
         
-        df_loca2_monthy = df_loca2_monthy.groupby(["Scenario","Month","Model"]).agg({'tasmax':'mean',
+        df_loca2_monthy.rename(columns  = {"Division":"State_Climate_Division_Code"}, inplace= True)
+
+
+        df_loca2_monthy["Model_Member"] = df_loca2_monthy["Model"].astype(str) + "__" + df_loca2_monthy["Member"].astype(str)
+
+        df_loca2_monthy = df_loca2_monthy.groupby(["State_Climate_Division_Code",
+                                                   "Scenario",
+                                                   "Month",
+                                                   "Model_Member"]).agg({'tasmax':'mean',
                                                                   'tasavg':'mean',
                                                                    'tasmin':'mean',
                                                                    'pr':    'mean'}).reset_index()
+
+        historical_string = "(" + historical_period_string + ")"
+        future_string     = "(" + input.period_selection() + ")"
+
+        df_loca2_monthy["Period"] = np.where(df_loca2_monthy['Scenario'].astype(str) == "Historical", 
+                                             historical_string, future_string)
+
+
+
+        df_loca2_monthy                 = df_loca2_monthy[["State_Climate_Division_Code",
+                                                           "Month", 
+                                                           "Scenario",
+                                                           "Period",
+                                                           "Model_Member",
+                                                           "tasmin",
+                                                           "tasavg",
+                                                           "tasmax",
+                                                           "pr"]]
+
+                                                        
         return df_loca2_monthy
 
         #
@@ -265,7 +304,7 @@ def server(input, output, session):
 
         selected_climdiv = input.climdiv_selection()
         climdiv_key = selected_climdiv.split()[0]
-        print(" -->", climdiv_key)
+
         if (use_url):
             url      = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
             print("===============")
@@ -292,6 +331,17 @@ def server(input, output, session):
 
         df_loca2_annual["tasavg"] = (df_loca2_annual["tasmax"] + df_loca2_annual["tasmin"]) /2
 
+        df_loca2_annual.rename(columns  = {"Division":"State_Climate_Division_Code"}, inplace= True)
+        df_loca2_annual["Model_Member"] = df_loca2_annual["Model"].astype(str) + "__" + df_loca2_annual["Member"].astype(str)
+        df_loca2_annual                 = df_loca2_annual[["State_Climate_Division_Code",
+                                                           "Year", 
+                                                           "Scenario",
+                                                           "Model_Member",
+                                                           "tasmin",
+                                                           "tasavg",
+                                                           "tasmax",
+                                                           "pr"]]
+
         return df_loca2_annual
 
         #
@@ -304,24 +354,37 @@ def server(input, output, session):
         # Create Annual Plot
         #
         my_metadata = df_climdivs[df_climdivs["Climate_Division_Selector"]==input.climdiv_selection()]
-
+        print(my_metadata)
 
         climdiv_string = "CMIP6-LOCA2 Downscaled Climate Ensembles\n" + \
-                         my_metadata["climdiv_name"].values[0]       + \
+                         my_metadata["State_Climate_Division"].values[0]       + \
                          ", "                                           + \
-                         my_metadata["climdiv_state_name"].values[0]    + \
+                         my_metadata["State"].values[0]    + \
                          " ("                                           + \
-                         str(my_metadata["climdiv"].values[0]).zfill(4) + \
+                         str(my_metadata["ClimDiv"].values[0]).zfill(4) + \
                          ") NCEI Climate Division"
 
+        df_loca2_annual_units = df_loca2_annual().copy()
 
-        yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
-                        "tasavg": "2-m Mean Temperature (°C)",
-                        "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
-                        "pr"    : "2-m Annual Total Precipitation (mm)"}
+        if input.use_metric():
+            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
+                            "tasavg": "2-m Mean Temperature (°C)",
+                            "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
+                            "pr"    : "2-m Annual Total Precipitation (mm)"}
+        else:
+            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°F)",
+                            "tasavg": "2-m Mean Temperature (°F)",
+                            "tasmin": "2-m Mean Daily Minimum Temperature (°F)",
+                            "pr"    : "2-m Annual Total Precipitation (in)"}  
+
+            df_loca2_annual_units["tasmax"] = df_loca2_annual_units["tasmax"] * 9./5. + 32
+            df_loca2_annual_units["tasavg"] = df_loca2_annual_units["tasavg"] * 9./5. + 32
+            df_loca2_annual_units["tasmin"] = df_loca2_annual_units["tasmin"] * 9./5. + 32
+            df_loca2_annual_units["pr"]     = df_loca2_annual_units["pr"]     / 25.4 
+           
 
 
-        sns.lineplot(data     = df_loca2_annual(),
+        sns.lineplot(data     = df_loca2_annual_units,
                      y        = input.loca_var(),
                      x        = "Year",
                      hue      = "Scenario",
@@ -353,20 +416,35 @@ def server(input, output, session):
         climdiv_string = "CMIP6-LOCA2 Downscaled Climate Ensembles " + \
                          "(" + historical_period_string + ") vs (" + input.period_selection() + ")" + \
                          "\n" + \
-                         my_metadata["climdiv_name"].values[0]          + \
+                         my_metadata["State_Climate_Division"].values[0]          + \
                          ", "                                           + \
-                         my_metadata["climdiv_state_name"].values[0]    + \
+                         my_metadata["State"].values[0]    + \
                          " ("                                           + \
-                         str(my_metadata["climdiv"].values[0]).zfill(4) + \
+                         str(my_metadata["ClimDiv"].values[0]).zfill(4) + \
                          ") NCEI Climate Division"
 
+        df_loca2_monthy_units = df_loca2_monthy().copy()
 
-        yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
-                        "tasavg": "2-m Mean Temperature (°C)",
-                        "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
-                        "pr"    : "2-m Monthly Total Precipitation (mm)"}
+        if input.use_metric():
+            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
+                            "tasavg": "2-m Mean Temperature (°C)",
+                            "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
+                            "pr"    : "2-m Monthly Total Precipitation (mm)"}
+        else:
+            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°F)",
+                            "tasavg": "2-m Mean Temperature (°F)",
+                            "tasmin": "2-m Mean Daily Minimum Temperature (°F)",
+                            "pr"    : "2-m Monthly Total Precipitation (in)"}
 
-        sns.lineplot(data     = df_loca2_monthy(),
+            df_loca2_monthy_units["tasmax"] = df_loca2_monthy_units["tasmax"] * 9./5. + 32
+            df_loca2_monthy_units["tasavg"] = df_loca2_monthy_units["tasavg"] * 9./5. + 32
+            df_loca2_monthy_units["tasmin"] = df_loca2_monthy_units["tasmin"] * 9./5. + 32
+            df_loca2_monthy_units["pr"]     = df_loca2_monthy_units["pr"]     / 25.4 
+           
+
+
+
+        sns.lineplot(data     = df_loca2_monthy_units,
                      y        = input.loca_var(),
                      x        = "Month",
                      hue      = "Scenario",
@@ -377,6 +455,17 @@ def server(input, output, session):
         #
         ###################################
 
+
+    @render.download(filename="loca2_annual_data_export.csv")
+    def annual_download_btn():
+        # Yield the plain CSV text string directly to the browser
+        yield df_loca2_annual().to_csv(index=False)
+
+
+    @render.download(filename="loca2_monthly_data_export.csv")
+    def monthly_download_btn():
+        # Yield the plain CSV text string directly to the browser
+        yield df_loca2_monthy().to_csv(index=False)
     
     @render.image
     def state_zone_map():
