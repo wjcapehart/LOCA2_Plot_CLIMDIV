@@ -106,6 +106,23 @@ future_years = {"2036-2065": [2036, 2065],
 
 ##########################################################
 #
+# Abbreviation vs Human Name LUT
+#
+
+variable_name_to_abbr_dict = {"Min 2-m Air Temp":     "tasmin",
+                              "Mean 2-m Air Temp":    "tasavg",
+                              "Max 2-m Air Temp":     "tasmax",
+                              "Precipitation Amount":     "pr"}
+
+variable_names = list(variable_name_to_abbr_dict)
+print(variable_names)
+
+# 
+##########################################################
+
+
+##########################################################
+#
 # Customized Plotting and Text Parameters
 #
 
@@ -135,10 +152,10 @@ app_ui = ui.page_sidebar(
                         label    = "State Climate Division", 
                         choices  = []), # selected = "3904 Black Hills"),
 
-        ui.input_select(id       = "loca_var", 
+        ui.input_select(id       = "loca_var_longname", 
                         label    = "LOCA2 Plotting Variable", 
-                        choices  = ["tasmin", "tasavg", "tasmax", "pr"],
-                        selected = "tasavg"),
+                        choices  = variable_names,
+                        selected = "Mean 2-m Air Temp"),
 
         ui.input_switch("use_metric", "Metric Units", True),
 
@@ -367,15 +384,15 @@ def server(input, output, session):
         df_loca2_annual_units = df_loca2_annual().copy()
 
         if input.use_metric():
-            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
-                            "tasavg": "2-m Mean Temperature (°C)",
-                            "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
-                            "pr"    : "2-m Annual Total Precipitation (mm)"}
+            yaxes_labels = {"Max 2-m Air Temp":     "2-m Mean Daily Maximum Temperature (°C)",
+                            "Mean 2-m Air Temp":    "2-m Mean Temperature (°C)",
+                            "Min 2-m Air Temp":     "2-m Mean Daily Minimum Temperature (°C)",
+                            "Precipitation Amount": "Annual Total Precipitation (mm)"}
         else:
-            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°F)",
-                            "tasavg": "2-m Mean Temperature (°F)",
-                            "tasmin": "2-m Mean Daily Minimum Temperature (°F)",
-                            "pr"    : "2-m Annual Total Precipitation (in)"}  
+            yaxes_labels = {"Max 2-m Air Temp":     "2-m Mean Daily Maximum Temperature (°F)",
+                            "Mean 2-m Air Temp":    "2-m Mean Temperature (°F)",
+                            "Min 2-m Air Temp":     "2-m Mean Daily Minimum Temperature (°F)",
+                            "Precipitation Amount": "Annual Total Precipitation (in)"}  
 
             df_loca2_annual_units["tasmax"] = df_loca2_annual_units["tasmax"] * 9./5. + 32
             df_loca2_annual_units["tasavg"] = df_loca2_annual_units["tasavg"] * 9./5. + 32
@@ -385,13 +402,13 @@ def server(input, output, session):
 
 
         sns.lineplot(data     = df_loca2_annual_units,
-                     y        = input.loca_var(),
+                     y        = variable_name_to_abbr_dict[input.loca_var_longname()],
                      x        = "Year",
                      hue      = "Scenario",
                      palette  = SSP_Colors_dict,
                      errorbar = ("pi", 50))
         plt.title(climdiv_string, loc='left')
-        plt.ylabel(yaxes_labels[input.loca_var()])
+        plt.ylabel(yaxes_labels[input.loca_var_longname()])
         plt.axvspan(xmin  = historical_period[0], 
                     xmax  = historical_period[1], 
                     color = 'lightgrey',
@@ -426,15 +443,15 @@ def server(input, output, session):
         df_loca2_monthy_units = df_loca2_monthy().copy()
 
         if input.use_metric():
-            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°C)",
-                            "tasavg": "2-m Mean Temperature (°C)",
-                            "tasmin": "2-m Mean Daily Minimum Temperature (°C)",
-                            "pr"    : "2-m Monthly Total Precipitation (mm)"}
+            yaxes_labels = {"Max 2-m Air Temp":      "2-m Mean Daily Maximum Temperature (°C)",
+                            "Mean 2-m Air Temp":     "2-m Mean Temperature (°C)",
+                            "Min 2-m Air Temp":      "2-m Mean Daily Minimum Temperature (°C)",
+                            "Precipitation Amount" : "Monthly Total Precipitation (mm)"}
         else:
-            yaxes_labels = {"tasmax": "2-m Mean Daily Maximum Temperature (°F)",
-                            "tasavg": "2-m Mean Temperature (°F)",
-                            "tasmin": "2-m Mean Daily Minimum Temperature (°F)",
-                            "pr"    : "2-m Monthly Total Precipitation (in)"}
+            yaxes_labels = {"Max 2-m Air Temp":      "2-m Mean Daily Maximum Temperature (°F)",
+                            "Mean 2-m Air Temp":     "2-m Mean Temperature (°F)",
+                            "Min 2-m Air Temp":      "2-m Mean Daily Minimum Temperature (°F)",
+                            "Precipitation Amount" : "Monthly Total Precipitation (in)"}
 
             df_loca2_monthy_units["tasmax"] = df_loca2_monthy_units["tasmax"] * 9./5. + 32
             df_loca2_monthy_units["tasavg"] = df_loca2_monthy_units["tasavg"] * 9./5. + 32
@@ -445,13 +462,13 @@ def server(input, output, session):
 
 
         sns.lineplot(data     = df_loca2_monthy_units,
-                     y        = input.loca_var(),
+                     y        = variable_name_to_abbr_dict[input.loca_var_longname()],
                      x        = "Month",
                      hue      = "Scenario",
                      palette  = SSP_Colors_dict,
                      errorbar = ("pi", 50))
         plt.title(climdiv_string, loc='left')
-        plt.ylabel(yaxes_labels[input.loca_var()])
+        plt.ylabel(yaxes_labels[input.loca_var_longname()])
         #
         ###################################
 
