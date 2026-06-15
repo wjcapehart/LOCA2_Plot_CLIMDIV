@@ -139,9 +139,10 @@ sns.set_theme(style="ticks", rc=custom_params)
 #
 
 app_ui = ui.page_sidebar(
+
+ 
+
     ui.sidebar(
-
-
 
         ui.input_select(id       = "state_selection", 
                         label    = "US State", 
@@ -163,42 +164,67 @@ app_ui = ui.page_sidebar(
                         label    = "Select Future Period", 
                         choices  = list(future_years.keys()), 
                         selected = "2036-2065"),
+        ui.p("State Climate Zone Map"),
         ui.output_plot(id        = "state_zone_map"),
+
+        title = "User Control"
 
     ),
 
-    ui.output_plot("annual_plot"),
+    ui.card(
 
+      ui.card_header("Plot Output"),
 
-    ui.output_plot("monthly_plot"),
+      ui.output_plot("annual_plot"),
 
-    ui.p("Download as a comma-delimited file (CSV), Metric units only (Temp: °C; Precip: mm)"),
+      ui.output_plot("monthly_plot"),
 
-    ui.download_button(id = "annual_download_btn", 
-                       label = "Download Annual Data (CSV)"),
-    ui.download_button(id = "monthly_download_btn", 
-                      label = "Download Monthly Data (CSV)"),
+    ),
+
     ui.p(ui.br()),
-    ui.h1("About This Display"),
 
-    ui.p("This display shows a a series of climate simulations from the CMIP6 Climate Model Ensembles ",
-         "and are a collection of the best simulations from each center's model participating in CMIP6.",ui.br(),ui.br()),
+    ui.card( 
+        ui.card_header("Download"),
 
-    ui.p("The output from these models were 'downscaled' from the global to regional scale using the ",
-         "Localized Constructed Analog Method (LOCA) by ",
-           ui.tags.a("Pierce et al. (2014)." ,href='https://journals.ametsoc.org/view/journals/hydr/15/6/jhm-d-14-0082_1.xml'),ui.br(),ui.br()),
+        ui.p("Download as a comma-delimited file (CSV), Metric units only (Temp: °C; Precip: mm)"),
+        ui.download_button(id = "annual_download_btn", 
+                           label = "Download Annual Data (CSV)"),
+        ui.download_button(id = "monthly_download_btn", 
+                          label = "Download Monthly Data (CSV)"),
+        ui.p(ui.br()),
+    ),
+    
+    ui.p(ui.br()),
 
-    ui.p("The results for the downscaling have been averaged over State Climate Divisions chosen by the user.",ui.br(),ui.br()),
+    ui.card(
 
-    ui.p("The user may select a variable from the pulldown menus, and also select a future ",
-         "30-year period by which to view the monthly trends and compare them to a fixed historical period (1981-2010).",ui.br(),ui.br()),
+        ui.card_header("About This Display"),
+
+        ui.p("This display shows a a series of climate simulations from the CMIP6 Climate Model Ensembles ",
+             "and are a collection of the best simulations from each center's model participating in CMIP6.",ui.br(),ui.br()),
+
+        ui.p("The output from these models were 'downscaled' from the global to regional scale using the ",
+             "Localized Constructed Analog Method (LOCA) by ",
+               ui.tags.a("Pierce et al. (2014)." ,href='https://journals.ametsoc.org/view/journals/hydr/15/6/jhm-d-14-0082_1.xml'),ui.br(),ui.br()),
+
+        ui.p("The results for the downscaling have been averaged over State Climate Divisions chosen by the user.",ui.br(),ui.br()),
+
+        ui.p("The user may select a variable from the pulldown menus, and also select a future ",
+             "30-year period by which to view the monthly trends and compare them to a fixed historical period (1981-2010).",ui.br(),ui.br()),
 
 
-    ui.p("For both the annual and monthly plots, the solid lines represent the ensemble means, while the shading ",
-         "represents the middle 50% range of the collected ensembles.",ui.br(),ui.br()),
+        ui.p("For both the annual and monthly plots, the solid lines represent the ensemble means, while the shading ",
+             "represents the middle 50% range of the collected ensembles.",ui.br(),ui.br()),
+             
 
+    ),
 
+  
+
+      
     title="CMIP6-LOCA2 Ensemble Plotting",
+    lang="en",
+
 )
 # 
 ##########################################################
