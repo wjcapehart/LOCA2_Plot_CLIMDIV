@@ -167,21 +167,22 @@ app_ui = ui.page_sidebar(
         ui.p("State Climate Zone Map"),
         ui.output_plot(id        = "state_zone_map"),
 
-        title = "User Control"
+        title = "User Control",
+        lang = "en",
 
     ),
 
     ui.card(
-
-      ui.card_header("Plot Output"),
-
+      ui.card_header("Annual Time Series Plot"),
       ui.output_plot("annual_plot"),
-
+    ),
+    
+    ui.card(
+      ui.card_header("Monthly Period Plot"),
       ui.output_plot("monthly_plot"),
-
     ),
 
-    ui.p(ui.br()),
+    ui.br(),
 
     ui.card( 
         ui.card_header("Download"),
@@ -193,7 +194,7 @@ app_ui = ui.page_sidebar(
                           label = "Download Monthly Data (CSV)"),
     ),
     
-    ui.p(ui.br()),
+    ui.br(),
 
     ui.card(
 
