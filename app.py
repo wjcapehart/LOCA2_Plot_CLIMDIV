@@ -10,13 +10,10 @@ import seaborn           as sns
 import pyreadr           as pyreadr
 import pandas            as pd 
 import matplotlib.pyplot as plt
-import numpy             as np
-import xarray            as xr
-import xclim             as xclim
-import cf_xarray         as cf_xarray
-import cftime            as cftime
+import numpy as np
 import io
 import urllib.request
+import calendar
 import socket
 
 
@@ -27,10 +24,7 @@ from   shiny         import reactive, App, render, ui
 #
 ##########################################################
 
-##########################################################
-#
-# Remote vs Local Access
-#
+
 
 hostname = socket.gethostname()
 if (hostname == "kyrill"):
@@ -42,8 +36,6 @@ print(" hostname :", hostname)
 print("  use_url :", use_url)
 print("===============")
 
-#
-##########################################################
 
 
 
@@ -65,34 +57,6 @@ for state in states_list:
         climdiv_by_state.update(climdivs_in_state)
 
 # 
-##########################################################
-
-
-##########################################################
-#
-# Index List
-#
-
-print("##########################################################")
-print("#")
-print("####### Initial Read of Climate Index Lookup Table #######")
-print("#")
-
-df_climate_indicies = pd.read_csv(filepath_or_buffer = "./Climate_Indicies.csv")
-
-print(" DataFrame for Climate Index Information")
-print(df_climate_indicies)
-
-menu_index_list = list(df_climate_indicies["selected_index"].values)
-
-print("print available indicies",menu_index_list)
-
-print("#")
-print("####### Initial Read of Climate Index Lookup Table #######")
-print("##########################################################")
-
-
-#
 ##########################################################
 
 
@@ -140,6 +104,21 @@ future_years = {"2036-2065": [2036, 2065],
 # 
 ##########################################################
 
+##########################################################
+#
+# Abbreviation vs Human Name LUT
+#
+
+variable_name_to_abbr_dict = {"Min 2-m Air Temp":     "tasmin",
+                              "Mean 2-m Air Temp":    "tasavg",
+                              "Max 2-m Air Temp":     "tasmax",
+                              "Precipitation Amount":     "pr"}
+
+variable_names = list(variable_name_to_abbr_dict)
+print(variable_names)
+
+# 
+##########################################################
 
 
 ##########################################################
@@ -174,10 +153,12 @@ app_ui = ui.page_sidebar(
                         label    = "State Climate Division", 
                         choices  = []), # selected = "3904 Black Hills"),
 
-        ui.input_select(id       = "selected_index", 
-                        label    = "Climate Index", 
-                        choices  = menu_index_list), #,
-                        #selected = menu_index_list[0]),
+        ui.input_select(id       = "loca_var_longname", 
+                        label    = "LOCA2 Plotting Variable", 
+                        choices  = variable_names,
+                        selected = "Mean 2-m Air Temp"),
+
+        ui.input_switch("use_metric", "Metric Units", True),
 
         ui.input_select(id       = "period_selection", 
                         label    = "Select Future Period", 
@@ -191,23 +172,11 @@ app_ui = ui.page_sidebar(
 
     ),
 
-        ui.card( 
-
-        ui.p("All plots are made to order from raw inputs and subsequent calculations. Please be patient."),
-        ui.p("New indicies are also slowly being added."),
-
-    ),
-
-    ui.br(),
-
- 
     ui.card(
       ui.card_header("Annual Time Series Plot"),
       ui.output_plot("annual_plot"),
     ),
-
-    ui.br(),
-
+    
     ui.card(
       ui.card_header("Monthly Period Plot"),
       ui.output_plot("monthly_plot"),
@@ -215,22 +184,14 @@ app_ui = ui.page_sidebar(
 
     ui.br(),
 
-    ui.card(
-      ui.card_header("Index Description"),
-      ui.output_text("index_description"),
-    ),
-
-    ui.br(),
-
-
     ui.card( 
         ui.card_header("Download"),
 
-        ui.p("Download as a comma-delimited file (CSV)"),
+        ui.p("Download as a comma-delimited file (CSV), Metric units only (Temp: °C; Precip: mm)"),
         ui.download_button(id = "annual_download_btn", 
                            label = "Download Annual Data (CSV)"),
         ui.download_button(id = "monthly_download_btn", 
-                           label = "Download Monthly Data (CSV)"),
+                          label = "Download Monthly Data (CSV)"),
     ),
     
     ui.br(),
@@ -239,10 +200,7 @@ app_ui = ui.page_sidebar(
 
         ui.card_header("About This Display"),
 
-        ui.p("This display shows a various climate metrics by US State Climate Divisions."),
-
-
-        ui.p("The data is erived from climate simulations from the CMIP6 Climate Model Ensembles ",
+        ui.p("This display shows a a series of climate simulations from the CMIP6 Climate Model Ensembles ",
              "and are a collection of the best simulations from each center's model participating in CMIP6."),
 
         ui.p("The output from these models were 'downscaled' from the global to regional scale using the ",
@@ -272,7 +230,7 @@ app_ui = ui.page_sidebar(
   
 
       
-    title="CMIP6-LOCA2 Climate Indicies",
+    title="CMIP6-LOCA2 Ensemble Plotting",
     lang="en",
 
 )
@@ -305,17 +263,18 @@ def server(input, output, session):
 
 
     @reactive.calc
-    def loca2_daily():
+    def df_loca2_monthy():
         ###################################
         #
-        # Retrieve Daily LOCA2 Xarray
+        # Retrieve Monthly LOCA2 DataFrame
         #
 
         selected_climdiv = input.climdiv_selection()
         climdiv_key = selected_climdiv.split()[0]
 
+
         if (use_url):
-            url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Daily_Files/LOCA2_V1_nCLIMDIV_" + climdiv_key + ".RData"#?raw=true"
+            url = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"#?raw=true"
 
             print("===============") 
             print(" hostname :", hostname)
@@ -326,7 +285,7 @@ def server(input, output, session):
             response = urllib.request.urlopen(url)
             result = pyreadr.read_r(io.BytesIO(response.read()))
         else:
-            filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Daily_Files/LOCA2_V1_nCLIMDIV_" + climdiv_key + ".RData"
+            filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" + climdiv_key + ".RData"
             print("===============")
             print(" hostname :", hostname)
             print("  use_url :", use_url)
@@ -334,244 +293,110 @@ def server(input, output, session):
             print("===============")
             result = pyreadr.read_r(path = filename)
 
-        loca2_daily                 = result["loca2_daily"]
-        loca2_daily                 = loca2_daily[loca2_daily["Percentile"] == "MEAN"]
-        loca2_daily["time"]         = pd.to_datetime(loca2_daily["Time"])    
-        loca2_daily["Ensemble"]     = loca2_daily["Model"].astype(str) + "__" + loca2_daily["Member"].astype(str)
-        loca2_daily = loca2_daily[["Ensemble","Scenario","time","tasmax","tasmin","pr"]]
 
-        loca2_daily["tasmax"] = loca2_daily["tasmax"] +273.15
-        loca2_daily["tasmin"] = loca2_daily["tasmin"] +273.15
-        loca2_daily["tasavg"] = (loca2_daily["tasmax"] + loca2_daily["tasmin"]) / 2.
-        loca2_daily["pr"]     = loca2_daily[    "pr"] / 86400.
-
-        loca2_daily = loca2_daily.set_index(["Ensemble","Scenario","time"]).to_xarray()
-
-        loca2_daily["tasmax"].attrs["units"]         = "K"
-        loca2_daily["tasavg"].attrs["units"]         = "K"
-        loca2_daily["tasmin"].attrs["units"]         = "K"
-        loca2_daily[    "pr"].attrs["units"]         = "kg m-2 s-1"
-        loca2_daily["tasmax"].attrs["long_name"]     = "Maximal daily temperature"
-        loca2_daily["tasavg"].attrs["long_name"]     = "Mean daily temperature"
-        loca2_daily["tasmin"].attrs["long_name"]     = "Minimal daily temperature"
-        loca2_daily[    "pr"].attrs["long_name"]     = "Mean daily precipitation rate"
-        loca2_daily["tasmax"].attrs["cell_methods"]  = "time: max within days"
-        loca2_daily["tasavg"].attrs["cell_methods"]  = "time: mean within days"
-        loca2_daily["tasmin"].attrs["cell_methods"]  = "time: min within days"
-        loca2_daily[    "pr"].attrs["cell_methods"]  = "time: mean within days"
-        loca2_daily["tasmax"].attrs["standard_name"] = "air_temperature"
-        loca2_daily["tasavg"].attrs["standard_name"] = "air_temperature"
-        loca2_daily["tasmin"].attrs["standard_name"] = "air_temperature"
-        loca2_daily[    "pr"].attrs["standard_name"] = "precipitation_flux"
+        df_loca2_monthy = result['loca2_monthly']
+        df_loca2_monthy = df_loca2_monthy[df_loca2_monthy["Percentile"]=="MEAN"]
+        df_loca2_monthy["tasavg"] = (df_loca2_monthy["tasmax"] + df_loca2_monthy["tasmin"]) /2
+        df_loca2_monthy['Scenario'] = pd.Categorical(df_loca2_monthy['Scenario'], 
+                                                     categories = SSP_Scenarios, 
+                                                     ordered    =   True)
+        calmon = list(calendar.month_abbr)[1:]
+        df_loca2_monthy['Month'] = df_loca2_monthy['Month'].astype(int)
+        df_loca2_monthy['Month'] = df_loca2_monthy['Month'].map(lambda x: calendar.month_abbr[x])
+        df_loca2_monthy['Month'] = pd.Categorical(df_loca2_monthy['Month'], 
+                                                  categories=calmon, 
+                                                  ordered=True)
+        df_loca2_monthy = df_loca2_monthy[((df_loca2_monthy["Year"] >= historical_period[0]) & (df_loca2_monthy["Year"] <= historical_period[1])) |
+                                          ((df_loca2_monthy["Year"] >= future_years[input.period_selection()][0]) & (df_loca2_monthy["Year"] <= future_years[input.period_selection()][1])) ]
+        
+        df_loca2_monthy.rename(columns  = {"Division":"State_Climate_Division_Code"}, inplace= True)
 
 
-        loca2_daily  = loca2_daily.convert_calendar(calendar = "standard", dim = "time", use_cftime = True)
+        df_loca2_monthy["Model_Member"] = df_loca2_monthy["Model"].astype(str) + "__" + df_loca2_monthy["Member"].astype(str)
 
-        return loca2_daily
+        df_loca2_monthy = df_loca2_monthy.groupby(["State_Climate_Division_Code",
+                                                   "Scenario",
+                                                   "Month",
+                                                   "Model_Member"]).agg({'tasmax':'mean',
+                                                                  'tasavg':'mean',
+                                                                   'tasmin':'mean',
+                                                                   'pr':    'mean'}).reset_index()
 
-        #
-        ###################################
+        historical_string = "(" + historical_period_string + ")"
+        future_string     = "(" + input.period_selection() + ")"
 
-
-    @reactive.calc
-    def index_y():
-        ###################################
-        #
-        # Calculate Annual Index Dataframe
-        #
-
-        mask_annual  = np.isnan(xclim.atmos.precip_accumulation(pr=loca2_daily()["pr"], freq='YS'))
-
-        if (input.selected_index() == "Mean Temperature"):
-            
-            index_y = loca2_daily()["tasavg"].resample(time="YS").mean(dim="time")
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-            index_y.name   = "tasavg"
-            index_y.values = index_y.values - 273.15
-
-        if (input.selected_index() == "Total Precipitation"):
-            
-            index_y =  xclim.indices.precip_accumulation(loca2_daily()["pr"], freq="YS")
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-            index_y.name   = "pr"
-            
-        if (input.selected_index() == "Simple Precip Intensity Index (SPII)"):
-            
-            index_y = xclim.indicators.atmos.daily_pr_intensity(loca2_daily()["pr"], freq="YS")
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Dry Spell Frequency"):   
-            
-            index_y = xclim.indicators.atmos.dry_spell_frequency(loca2_daily()["pr"], window=5, freq="YS")
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Heat Wave Frequency"):   
-            
-            index_y = xclim.indicators.atmos.heat_wave_frequency(tasmin             = loca2_daily()["tasmin"], 
-                                                                 tasmax             = loca2_daily()["tasmax"],
-                                                                 freq               =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Heat Wave Frequency Max Length"):   
-            
-            index_y = xclim.indicators.atmos.heat_wave_max_length(tasmin             = loca2_daily()["tasmin"], 
-                                                                 tasmax             = loca2_daily()["tasmax"],
-                                                                 freq               =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Heat Wave Frequency Total Length"):   
-            
-            index_y = xclim.indicators.atmos.heat_wave_total_length(tasmin             = loca2_daily()["tasmin"], 
-                                                                    tasmax             = loca2_daily()["tasmax"],
-                                                                    freq               =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "7-day Anticedant Precipitation Index"):   
-            
-            index_y = xclim.indicators.atmos.antecedent_precipitation_index(pr   = loca2_daily()["pr"])
-            mask_daily  = np.isnan(loca2_daily()["pr"])
-            index_y.values = np.where(mask_daily,  np.nan, index_y)
-
-        elif (input.selected_index() == "Cooling Degree Days"):   
-            
-            index_y = xclim.indicators.atmos.cooling_degree_days(tas   = loca2_daily()["tasavg"],
-                                                                             freq =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Heating Degree Days"):   
-            
-            index_y = xclim.indicators.atmos.heating_degree_days(tas   = loca2_daily()["tasavg"],
-                                                                             freq =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
-
-        elif (input.selected_index() == "Freeze-Thaw Days"):   
-            
-            index_y = xclim.indicators.atmos.daily_freezethaw_cycles(tasmin = loca2_daily()["tasmin"], 
-                                                                      tasmax = loca2_daily()["tasmax"],
-                                                                      freq   =        'YS')
-            index_y.values = np.where(mask_annual,  np.nan, index_y)
+        df_loca2_monthy["Period"] = np.where(df_loca2_monthy['Scenario'].astype(str) == "Historical", 
+                                             historical_string, future_string)
 
 
 
+        df_loca2_monthy                 = df_loca2_monthy[["State_Climate_Division_Code",
+                                                           "Month", 
+                                                           "Scenario",
+                                                           "Period",
+                                                           "Model_Member",
+                                                           "tasmin",
+                                                           "tasavg",
+                                                           "tasmax",
+                                                           "pr"]]
 
-
-
-
-
-        index_y["time"] = index_y.indexes['time'].to_datetimeindex(time_unit='us')
-
-        index_y = index_y.to_dataframe().reset_index().dropna()
-
-        index_y["Year"]   = index_y["time"].dt.year
-
-        index_y['Scenario'] = pd.Categorical(index_y['Scenario'], 
-                                                categories = SSP_Scenarios, 
-                                                ordered    = True)
-
-        print(" Annual Dataframe Fields", index_y.columns)
-
-        return index_y
+                                                        
+        return df_loca2_monthy
 
         #
         ###################################
 
     @reactive.calc
-    def index_m():
+    def df_loca2_annual():
         ###################################
         #
-        # Calculate Monthly Index Dataframe
+        # Retrieve Annual LOCA2 DataFrame
         #
 
-        mask_monthly = np.isnan(xclim.atmos.precip_accumulation(pr=loca2_daily()["pr"], freq='MS'))
+        selected_climdiv = input.climdiv_selection()
+        climdiv_key = selected_climdiv.split()[0]
 
+        if (use_url):
+            url      = "https://thredds.ias.sdsmt.edu:8443/thredds/fileServer/LOCA2/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"#?raw=true"
+            print("===============")
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print("      url :", url)
+            print("===============")
+            response = urllib.request.urlopen(url)
+            result   = pyreadr.read_r(io.BytesIO(response.read()))
+        else:
+            filename = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/R_Annual_Files/LOCA2_V1_nCLIMDIV_ANNUAL_" + climdiv_key + ".RData"
+            print("===============")
+            print(" hostname :", hostname)
+            print("  use_url :", use_url)
+            print(" filename :", filename)
+            print("===============")
+            result   = pyreadr.read_r(path = filename)
 
-        if (input.selected_index() == "Mean Temperature"):
-            
-            index_m = loca2_daily()["tasavg"].resample(time="MS").mean(dim="time")
-            index_m.values = np.where(mask_monthly,  np.nan, index_m)
-            index_m.name   = "tasavg"
-            index_m.values = index_m.values - 273.15
+        df_loca2_annual = result['loca2_annual']
+        df_loca2_annual = df_loca2_annual[df_loca2_annual["Percentile"]=="MEAN"]
+        df_loca2_annual['Scenario'] = pd.Categorical(df_loca2_annual['Scenario'], 
+                                                     categories = SSP_Scenarios, 
+                                                     ordered    =   True)
 
-        if (input.selected_index() == "Total Precipitation"):
-            
-            index_m =  xclim.indices.precip_accumulation(loca2_daily()["pr"], freq="MS")
-            index_m.values = np.where(mask_monthly,  np.nan, index_m)
-            index_m.name   = "pr"
-            
-        if (input.selected_index() == "Simple Precip Intensity Index (SPII)"):
-            
-            index_m = xclim.indicators.atmos.daily_pr_intensity(loca2_daily()["pr"], freq="MS")
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
+        df_loca2_annual["tasavg"] = (df_loca2_annual["tasmax"] + df_loca2_annual["tasmin"]) /2
 
-        elif (input.selected_index() == "Dry Spell Frequency"):   
-            
-            index_m = xclim.indicators.atmos.dry_spell_frequency(loca2_daily()["pr"], window=5, freq="MS")
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
+        df_loca2_annual.rename(columns  = {"Division":"State_Climate_Division_Code"}, inplace= True)
+        df_loca2_annual["Model_Member"] = df_loca2_annual["Model"].astype(str) + "__" + df_loca2_annual["Member"].astype(str)
+        df_loca2_annual                 = df_loca2_annual[["State_Climate_Division_Code",
+                                                           "Year", 
+                                                           "Scenario",
+                                                           "Model_Member",
+                                                           "tasmin",
+                                                           "tasavg",
+                                                           "tasmax",
+                                                           "pr"]]
 
-        elif (input.selected_index() == "Heat Wave Frequency"):   
-            
-            index_m = xclim.indicators.atmos.heat_wave_frequency(tasmin             = loca2_daily()["tasmin"], 
-                                                                 tasmax             = loca2_daily()["tasmax"],
-                                                                 freq               =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        elif (input.selected_index() == "Heat Wave Frequency Max Length"):   
-            
-            index_m = xclim.indicators.atmos.heat_wave_max_length(tasmin             = loca2_daily()["tasmin"], 
-                                                                 tasmax             = loca2_daily()["tasmax"],
-                                                                 freq               =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        elif (input.selected_index() == "Heat Wave Frequency Total Length"):   
-            
-            index_m = xclim.indicators.atmos.heat_wave_total_length(tasmin             = loca2_daily()["tasmin"], 
-                                                                    tasmax             = loca2_daily()["tasmax"],
-                                                                    freq               =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        elif (input.selected_index() == "7-day Anticedant Precipitation Index"):   
-            
-            index_m = xclim.indicators.atmos.antecedent_precipitation_index(pr   = loca2_daily()["pr"])
-            mask_daily  = np.isnan(loca2_daily()["pr"])
-            index_m.values = np.where(mask_daily,  np.nan, index_m)
-
-        elif (input.selected_index() == "Cooling Degree Days"):   
-            
-            index_m = xclim.indicators.atmos.cooling_degree_days(tas   = loca2_daily()["tasavg"],
-                                                                             freq =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        elif (input.selected_index() == "Heating Degree Days"):   
-            
-            index_m = xclim.indicators.atmos.heating_degree_days(tas   = loca2_daily()["tasavg"],
-                                                                             freq =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        elif (input.selected_index() == "Freeze-Thaw Days"):   
-            
-            index_m = xclim.indicators.atmos.daily_freezethaw_cycles(tasmin = loca2_daily()["tasmin"], 
-                                                                      tasmax = loca2_daily()["tasmax"],
-                                                                      freq   =        'MS')
-            index_m.values = np.where(mask_monthly, np.nan, index_m)
-
-        index_m["time"] = index_m.indexes['time'].to_datetimeindex(time_unit='us')
-
-        index_m = index_m.to_dataframe().reset_index().dropna()
-
-        index_m["Year"]   = index_m["time"].dt.year
-        index_m["Month"]  = index_m["time"].dt.strftime('%b')
-
-        index_m['Scenario'] = pd.Categorical(index_m['Scenario'], 
-                                                categories = SSP_Scenarios, 
-                                                ordered    = True)
-
-
-        print("Monthly Dataframe Fields", index_m.columns)
-        return index_m
+        return df_loca2_annual
 
         #
         ###################################
-
 
     @render.plot
     def annual_plot():
@@ -579,22 +404,8 @@ def server(input, output, session):
         #
         # Create Annual Plot
         #
-
         my_metadata = df_climdivs[df_climdivs["Climate_Division_Selector"]==input.climdiv_selection()]
         print(my_metadata)
-
-        df_local_index = df_climate_indicies[df_climate_indicies["selected_index"] == input.selected_index()]
-
-        print("**** PLOT ANNUAL: New Plot Crunch ****")
-        print("Selected Index: ",input.selected_index())
-        df_local_index = df_climate_indicies[df_climate_indicies["selected_index"] == input.selected_index()]
-        print(df_local_index)
-        varname        = df_local_index["varname"].values[0]
-        units          = df_local_index["units"].values[0]
-        print("Selected Index: ", varname, " [", units,"]")
-        print("**** PLOT ANNUAL: New Plot Crunch ****")
-
-
 
         climdiv_string = "CMIP6-LOCA2 Downscaled Climate Ensembles\n" + \
                          my_metadata["State_Climate_Division"].values[0]       + \
@@ -603,15 +414,35 @@ def server(input, output, session):
                          " ("                                           + \
                          str(my_metadata["ClimDiv"].values[0]).zfill(4) + \
                          ") NCEI Climate Division"
-       
-        sns.lineplot(data    = index_y(),
-                     y       = varname,
-                     x       = "Year",
-                     hue     = "Scenario",
-                     palette = SSP_Colors_dict)
-        plt.ylabel(input.selected_index() + " [" + units + "]")
 
+        df_loca2_annual_units = df_loca2_annual().copy()
+
+        if input.use_metric():
+            yaxes_labels = {"Max 2-m Air Temp":     "2-m Mean Daily Maximum Temperature (°C)",
+                            "Mean 2-m Air Temp":    "2-m Mean Temperature (°C)",
+                            "Min 2-m Air Temp":     "2-m Mean Daily Minimum Temperature (°C)",
+                            "Precipitation Amount": "Annual Total Precipitation (mm)"}
+        else:
+            yaxes_labels = {"Max 2-m Air Temp":     "2-m Mean Daily Maximum Temperature (°F)",
+                            "Mean 2-m Air Temp":    "2-m Mean Temperature (°F)",
+                            "Min 2-m Air Temp":     "2-m Mean Daily Minimum Temperature (°F)",
+                            "Precipitation Amount": "Annual Total Precipitation (in)"}  
+
+            df_loca2_annual_units["tasmax"] = df_loca2_annual_units["tasmax"] * 9./5. + 32
+            df_loca2_annual_units["tasavg"] = df_loca2_annual_units["tasavg"] * 9./5. + 32
+            df_loca2_annual_units["tasmin"] = df_loca2_annual_units["tasmin"] * 9./5. + 32
+            df_loca2_annual_units["pr"]     = df_loca2_annual_units["pr"]     / 25.4 
+           
+
+
+        sns.lineplot(data     = df_loca2_annual_units,
+                     y        = variable_name_to_abbr_dict[input.loca_var_longname()],
+                     x        = "Year",
+                     hue      = "Scenario",
+                     palette  = SSP_Colors_dict,
+                     errorbar = ("pi", 50))
         plt.title(climdiv_string, loc='left')
+        plt.ylabel(yaxes_labels[input.loca_var_longname()])
         plt.axvspan(xmin  = historical_period[0], 
                     xmax  = historical_period[1], 
                     color = 'lightgrey',
@@ -633,17 +464,6 @@ def server(input, output, session):
         my_metadata = df_climdivs[df_climdivs["Climate_Division_Selector"]==input.climdiv_selection()]
 
 
-        print("**** PLOT MONTHLY: New Plot Crunch ****")
-        print("Selected Index: ",input.selected_index())
-        df_local_index = df_climate_indicies[df_climate_indicies["selected_index"] == input.selected_index()]
-        print(df_local_index)
-        varname        = df_local_index["varname"].values[0]
-        units          = df_local_index["units"].values[0]
-        print("Selected Index: ", varname, " [", units,"]")
-        print("**** PLOT MONTHLY: New Plot Crunch ****")
-
-
-
         climdiv_string = "CMIP6-LOCA2 Downscaled Climate Ensembles " + \
                          "(" + historical_period_string + ") vs (" + input.period_selection() + ")" + \
                          "\n" + \
@@ -654,18 +474,35 @@ def server(input, output, session):
                          str(my_metadata["ClimDiv"].values[0]).zfill(4) + \
                          ") NCEI Climate Division"
 
-        index_m0 = index_m()[((index_m()["Year"] >= historical_period[0])                      & (index_m()["Year"] <= historical_period[1])) |
-                             ((index_m()["Year"] >= future_years[input.period_selection()][0]) & (index_m()["Year"] <= future_years[input.period_selection()][1])) ]
+        df_loca2_monthy_units = df_loca2_monthy().copy()
 
-        sns.lineplot(data     = index_m0,
-                     y        = varname,
+        if input.use_metric():
+            yaxes_labels = {"Max 2-m Air Temp":      "2-m Mean Daily Maximum Temperature (°C)",
+                            "Mean 2-m Air Temp":     "2-m Mean Temperature (°C)",
+                            "Min 2-m Air Temp":      "2-m Mean Daily Minimum Temperature (°C)",
+                            "Precipitation Amount" : "Monthly Total Precipitation (mm)"}
+        else:
+            yaxes_labels = {"Max 2-m Air Temp":      "2-m Mean Daily Maximum Temperature (°F)",
+                            "Mean 2-m Air Temp":     "2-m Mean Temperature (°F)",
+                            "Min 2-m Air Temp":      "2-m Mean Daily Minimum Temperature (°F)",
+                            "Precipitation Amount" : "Monthly Total Precipitation (in)"}
+
+            df_loca2_monthy_units["tasmax"] = df_loca2_monthy_units["tasmax"] * 9./5. + 32
+            df_loca2_monthy_units["tasavg"] = df_loca2_monthy_units["tasavg"] * 9./5. + 32
+            df_loca2_monthy_units["tasmin"] = df_loca2_monthy_units["tasmin"] * 9./5. + 32
+            df_loca2_monthy_units["pr"]     = df_loca2_monthy_units["pr"]     / 25.4 
+           
+
+
+
+        sns.lineplot(data     = df_loca2_monthy_units,
+                     y        = variable_name_to_abbr_dict[input.loca_var_longname()],
                      x        = "Month",
                      hue      = "Scenario",
                      palette  = SSP_Colors_dict,
                      errorbar = ("pi", 50))
         plt.title(climdiv_string, loc='left')
-        plt.ylabel(input.selected_index() + " [" + units + "]")
-
+        plt.ylabel(yaxes_labels[input.loca_var_longname()])
         #
         ###################################
 
@@ -673,15 +510,14 @@ def server(input, output, session):
     @render.download(filename="loca2_annual_data_export.csv")
     def annual_download_btn():
         # Yield the plain CSV text string directly to the browser
-        yield index_y().to_csv(index=False)
+        yield df_loca2_annual().to_csv(index=False)
 
 
     @render.download(filename="loca2_monthly_data_export.csv")
     def monthly_download_btn():
         # Yield the plain CSV text string directly to the browser
-        yield index_m().to_csv(index=False)
+        yield df_loca2_monthy().to_csv(index=False)
     
-
     @render.image
     def state_zone_map():
         ###################################
@@ -697,32 +533,9 @@ def server(input, output, session):
         img: ImgData = {"src": state_img_file, "width": "100%"}
         return img
 
-        #
-        ###################################
-
-
-
-    @render.text
-    def index_description():
-        ###################################
-        #
-        # Retrieve Daily LOCA2 Xarray
-        #
-
-        print("$$$$ INDEX DESCRIPTION MONTHLY: New Plot Crunch $$$$")
-        print("Selected Index: ",input.selected_index())
-        df_local_index = df_climate_indicies[df_climate_indicies["selected_index"] == input.selected_index()]
-        print(df_local_index)
-        index_description = df_local_index["Description"].values[0]
-        print("Selected Index: ", index_description)
-        print("$$$$ INDEX DESCRIPTION MONTHLY: New Plot Crunch $$$$")
-
-        return index_description
 
         #
         ###################################
-
-
 
 # 
 ##########################################################     
