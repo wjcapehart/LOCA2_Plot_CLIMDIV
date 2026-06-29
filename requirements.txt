@@ -1,0 +1,6 @@
+shiny
+seaborn
+pandas
+pyreadr
+matplotlib
+numpy

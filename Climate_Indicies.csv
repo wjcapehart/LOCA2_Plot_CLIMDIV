@@ -1,0 +1,15 @@
+﻿selected_index,function,varname,units,Description
+Mean Temperature,"ds.tas.resample(time=""MS"").mean(dim=""time"")",tasavg,°C,Average Temperature
+Total Precipitation, xclim.indices.precip_accumulation,pr,mm,Total Precipitation
+Simple Precip Intensity Index (SPII),xclim.indicators.atmos.daily_pr_intensity,sdii,mm/dy,Simple Daily Intensity Index (SDII) or average precipitation for days with daily precipitation over 1 mm.
+Dry Spell Frequency,xclim.indicators.atmos.dry_spell_frequency,dry_spell_frequency,# of periods,"The number of dry periods of 5 day or more, during which the {op} precipitation on a window of 5 day(s) is below 1 mm"
+Heat Wave Frequency,xclim.indicators.atmos.heat_wave_frequency,heat_wave_frequency,# of periods,"The number of heat wave events within a given period. A heat wave occurs when daily minimum and maximum temperatures exceed 22 °C and 30 °C, respectively, over at least 3 days."
+Heat Wave Frequency Max Length,xclim.indicators.atmos.heat_wave_max_length,heat_wave_max_length,days,"The maximum length of heat wave events occurring within a given period. A heat wave occurs when daily minimum and maximum temperatures exceed 22 °C and 30 °C, respectively, over at least 3 days."
+Heat Wave Frequency Total Length,xclim.indicators.atmos.heat_wave_total_length,heat_wave_total_length,days,"The total length of heat wave events occurring within a given period. A heat wave occurs when daily minimum and maximum temperatures exceed 22 °C and 30 °C, respectively, over at least 3 days."
+7-day Anticedant Precipitation Index,xclim.indicators.atmos.antecedent_precipitation_index,api,mm,Weighted moving sum of daily precipitation totals with a 7-day window. Weights are an exponential decay of base 0.935.
+Cooling Degree Days,xclim.indicators.atmos.cooling_degree_days,cooling_degree_days,CDDs,Cumulative sum of temperature degrees for mean daily temperature above 65 °F (integral_of_air_temperature_excess_wrt_time)
+Heating Degree Days,xclim.indicators.atmos.heating_degree_days,heating_degree_days,HDDs,Cumulative sum of temperature degrees for daily temperatures below 65 °F (integral_of_air_temperature_deficit_wrt_time) 
+Freeze-Thaw Days,xclim.indicators.atmos.daily_freezethaw_cycles,dlyfrzthw,days,Number of days where maximum daily temperatures are above freezing and minimum daily temperatures are at or below freezing
+Wetting Rain Days,xclim.indicators.atmos.days_over_precip_doy_thresh,days_over_precip_doy_thresh,days, Number of days with daily precipitation flux above the {pr_per_thresh}th percentile of {pr_per_period} (number_of_days_with_lwe_thickness_of_precipitation_amount_above_daily_threshold)
+Cold and Dry Days,xclim.indicators.atmos.cold_and_dry_days,cold_and_dry_days,days,{freq} number of days where temperature is below {tas_per_thresh}th percentile and precipitation is below {pr_per_thresh}th percentile
+Cold and Wet Days,xclim.indicators.atmos.cold_and_wet_days,cold_and_wet_days,days,{freq} number of days where temperature is below {tas_per_thresh}th percentile and precipitation is above {pr_per_thresh}th percentile
