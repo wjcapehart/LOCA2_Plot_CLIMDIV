@@ -223,7 +223,7 @@ app_ui = ui.page_sidebar(
     ui.card(
         ui.card_header("Citations & References"),
 
-        ui.markdown("""Pierce, D.W., D.R. Cayan, D.R. Feldman, and M.D. Risser, 2023: Future Increases in North American Extreme Precipitation in CMIP6 Downscaled with LOCA, *Journal of Hydrometeorology*, **24**(5), 951-975, doi:[10.1175/JHM-D-22-0194.1](https://doi.org/10.1175/JHM-D-22-0194.1)."""),
+        ui.markdown("""Pierce, D.W., D.R. Cayan, D.R. Feldman, and M.D. Risser, 2023: Future increases in North American extreme precipitation in CMIP6 downscaled with LOCA, *Journal of Hydrometeorology*, **24**(5), 951-975, doi:[10.1175/JHM-D-22-0194.1](https://doi.org/10.1175/JHM-D-22-0194.1)."""),
 
     ),
 
